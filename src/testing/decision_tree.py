@@ -14,7 +14,7 @@ from sklearn import preprocessing
 
 
 def get_dataset() -> pd.DataFrame:
-    return pd.read_csv('./UCI_Credit_Card.csv', sep=",")
+    return pd.read_csv('../data/UCI_Credit_Card.csv', sep=",")
 
 
 def get_train_test() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
