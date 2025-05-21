@@ -41,6 +41,9 @@ class DecisionTree(BaseTree):
         # para cada feature/atributo
         for index, feature in enumerate(x.columns.tolist()):
             thresholds = np.unique(x[feature])
+            # limita o numero de thresholds para 1000
+            if len(thresholds) > 1000:
+                thresholds = np.linspace(x[feature].min(), x[feature].max(), 1000)
             for index_t, t in enumerate(thresholds):
                 logger.debug(f'feature: {index + 1}/{n}, threshold: {index_t + 1}/{len(thresholds)}')
                 y_left = y[x[feature] <= t]  # seleciona todas linhas cujo valor feature <= t
@@ -48,10 +51,8 @@ class DecisionTree(BaseTree):
                 if len(y_left) == 0 or len(y_right) == 0:
                     # ignora splits que resultam em vazios
                     continue
-                x_left = x[x[feature] <= t]
-                x_right = x[x[feature] > t]
                 # passa a árvore a esquerda e a direita para computar o critério
-                score = gini_impurity(y)
+                score = gini_impurity(y_left) + gini_impurity(y_right)
                 # Se o score de impureza for menor,isto é,
                 # separamos bem os dados conforme o threshold, então
                 # esse threshold eh o melhor
