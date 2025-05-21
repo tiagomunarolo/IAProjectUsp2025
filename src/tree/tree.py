@@ -1,18 +1,20 @@
 import numpy as np
 import pandas as pd
 from loguru import logger
+from typing import Callable
+from src.tree.criterion import gini_impurity
+from src.tree.criterion import custom_criterion
+from src.tree.interfaces import BaseTree
 
-from .interfaces import BaseTree
 
+class Criterion:
+    @staticmethod
+    def get_criterion(criterion: str) -> Callable:
+        if criterion == 'custom':
+            return custom_criterion
 
-def gini_impurity(y):
-    # gini impurity --> 1 - sum(p_i^2)
-    # p_i = n_i / n
-    # n_i = quantidade de elementos da classe i
-    # n = total de elementos
-    _, counts = np.unique(y, return_counts=True)
-    probs = counts / counts.sum()
-    return 1 - np.sum(probs ** 2)
+        # Default
+        return gini_impurity
 
 
 class DecisionTreeAdapted(BaseTree):
@@ -20,11 +22,12 @@ class DecisionTreeAdapted(BaseTree):
     Implementação da árvore de decisão
     """
 
-    def __init__(self, max_depth: int, min_samples_split: int = 2):
+    def __init__(self, max_depth: int, min_samples_split: int = 2, criterion: str = 'gini'):
         super().__init__(max_depth, min_samples_split)
         self.num_features = None
         self.num_classes = None
         self.tree_ = None
+        self.criterion = Criterion.get_criterion(criterion)
 
     def _find_best_split(self, x: pd.DataFrame, y: np.ndarray) -> tuple:
         """
@@ -36,15 +39,15 @@ class DecisionTreeAdapted(BaseTree):
         best_feature, best_thresh = None, None
         # melhor critério de impureza
         best_criterion = float('inf')
-
         # para cada feature/atributo
         for index, feature in enumerate(x.columns.tolist()):
+            logger.debug(f'Analysing feature: {index + 1}/{n}')
+
             thresholds = np.unique(x[feature])
             # limita o numero de thresholds para 1000
             if len(thresholds) > 1000:
                 thresholds = np.linspace(x[feature].min(), x[feature].max(), 1000)
             for index_t, t in enumerate(thresholds):
-                logger.debug(f'feature: {index + 1}/{n}, threshold: {index_t + 1}/{len(thresholds)}')
                 y_left = y[x[feature] <= t]  # seleciona todas linhas cujo valor feature <= t
                 y_right = y[x[feature] > t]  # seleciona todas linhas cujo valor feature > t
                 if len(y_left) == 0 or len(y_right) == 0:
@@ -54,7 +57,9 @@ class DecisionTreeAdapted(BaseTree):
                     # ignora splits que resultam em folhas < min_samples_split
                     continue
                 # passa a árvore a esquerda e a direita para computar o critério
-                score = gini_impurity(y_left) + gini_impurity(y_right)
+                data_left = {'y': y_left}
+                data_right = {'y': y_right}
+                score = self.criterion(**data_left) + self.criterion(**data_right)
                 # Se o score de impureza for menor,isto é,
                 # separamos bem os dados conforme o threshold, então
                 # esse threshold eh o melhor
@@ -95,6 +100,7 @@ class DecisionTreeAdapted(BaseTree):
         return node
 
     def fit(self, x: np.ndarray, y: np.ndarray) -> 'DecisionTreeAdapted':
+        """ Processo de trenamento da árvore de decisão"""
         # total de classes no dataset
         self.num_classes = len(set(y))
         # numero de features no dataset
@@ -105,6 +111,7 @@ class DecisionTreeAdapted(BaseTree):
 
     @staticmethod
     def _predict_one(x: pd.DataFrame, node: dict):
+        """ Predição para um dado X"""
         while 'feature' in node:
             feat = x[node['feature']]
             threshold = node['threshold']
@@ -112,6 +119,7 @@ class DecisionTreeAdapted(BaseTree):
         return node['predicted_class']
 
     def predict(self, x: pd.DataFrame) -> np.ndarray:
+        """ Predição para um conjunto de dados """
         responses = []
         for index in range(x.shape[0]):
             responses.append(self._predict_one(x.iloc[index, :], self.tree_))

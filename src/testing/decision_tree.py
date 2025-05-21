@@ -2,7 +2,7 @@
 import os
 from loguru import logger
 from src.data_processing import DataProcessing
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score
 from sklearn.tree import DecisionTreeClassifier
 from dotenv import load_dotenv
 
@@ -33,6 +33,7 @@ def train():
     tree.fit(x_train, y_train)
     y_hat = tree.predict(x_test)
     logger.info(f'Accuracy: {accuracy_score(y_test, y_hat)}')
+    logger.info(f'F1-Score: {f1_score(y_test, y_hat)}')
     return tree
 
 
