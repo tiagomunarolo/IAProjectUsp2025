@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from loguru import logger
 
 from .interfaces import BaseTree
 
@@ -41,7 +42,7 @@ class DecisionTree(BaseTree):
         for index, feature in enumerate(x.columns.tolist()):
             thresholds = np.unique(x[feature])
             for index_t, t in enumerate(thresholds):
-                print(f'feature: {index + 1}/{n}, threshold: {index_t + 1}/{len(thresholds)}')
+                logger.debug(f'feature: {index + 1}/{n}, threshold: {index_t + 1}/{len(thresholds)}')
                 y_left = y[x[feature] <= t]  # seleciona todas linhas cujo valor feature <= t
                 y_right = y[x[feature] > t]  # seleciona todas linhas cujo valor feature > t
                 if len(y_left) == 0 or len(y_right) == 0:
