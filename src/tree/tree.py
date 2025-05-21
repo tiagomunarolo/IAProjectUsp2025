@@ -41,7 +41,7 @@ class DecisionTreeAdapted(BaseTree):
         best_criterion = float('inf')
         # para cada feature/atributo
         for index, feature in enumerate(x.columns.tolist()):
-            logger.debug(f'Analysing feature: {index + 1}/{n}')
+            logger.debug(f'Analysing feature [{feature}]: {index + 1}/{n}')
 
             thresholds = np.unique(x[feature])
             # limita o numero de thresholds para 1000
@@ -59,7 +59,8 @@ class DecisionTreeAdapted(BaseTree):
                 # passa a árvore a esquerda e a direita para computar o critério
                 data_left = {'y': y_left}
                 data_right = {'y': y_right}
-                score = self.criterion(**data_left) + self.criterion(**data_right)
+                # Faz a soma ponderada das impurezas
+                score = (self.criterion(**data_left) * len(y_left) + self.criterion(**data_right) * len(y_right)) / m
                 # Se o score de impureza for menor,isto é,
                 # separamos bem os dados conforme o threshold, então
                 # esse threshold eh o melhor
