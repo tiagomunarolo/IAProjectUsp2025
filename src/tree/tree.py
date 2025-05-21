@@ -45,9 +45,9 @@ class DecisionTreeAdapted(BaseTree):
 
             thresholds = np.unique(x[feature])
             # limita o numero de thresholds para 1000
-            if len(thresholds) > 1000:
-                thresholds = np.linspace(x[feature].min(), x[feature].max(), 1000)
-            for index_t, t in enumerate(thresholds):
+            if len(thresholds) > 100:
+                thresholds = np.linspace(x[feature].min(), x[feature].max(), 100)
+            for t in thresholds:
                 y_left = y[x[feature] <= t]  # seleciona todas linhas cujo valor feature <= t
                 y_right = y[x[feature] > t]  # seleciona todas linhas cujo valor feature > t
                 if len(y_left) == 0 or len(y_right) == 0:
@@ -57,10 +57,12 @@ class DecisionTreeAdapted(BaseTree):
                     # ignora splits que resultam em folhas < min_samples_split
                     continue
                 # passa a árvore a esquerda e a direita para computar o critério
-                data_left = {'y': y_left}
-                data_right = {'y': y_right}
+                data = {'y_left': y_left,
+                        'y_right': y_right,
+                        'x_left': x[x[feature] <= t],
+                        'x_right': x[x[feature] > t]}
                 # Faz a soma ponderada das impurezas
-                score = (self.criterion(**data_left) * len(y_left) + self.criterion(**data_right) * len(y_right)) / m
+                score = self.criterion(**data)
                 # Se o score de impureza for menor,isto é,
                 # separamos bem os dados conforme o threshold, então
                 # esse threshold eh o melhor
@@ -80,7 +82,7 @@ class DecisionTreeAdapted(BaseTree):
         num_samples_per_class = [np.sum(y == i) for i in range(self.num_classes)]
         predicted_class = np.argmax(num_samples_per_class)
         # criando o nó da árvore (classe predita = maior quantidade de amostras)
-        node = {'predicted_class': predicted_class}
+        node = {'predicted_class': int(predicted_class)}
         if depth < self.max_depth:
             # enquanto não chegou na profundidade maxima
             # busca o melhor split
@@ -123,5 +125,5 @@ class DecisionTreeAdapted(BaseTree):
         """ Predição para um conjunto de dados """
         responses = []
         for index in range(x.shape[0]):
-            responses.append(self._predict_one(x.iloc[index, :], self.tree_))
+            responses.append(int(self._predict_one(x.iloc[index, :], self.tree_)))
         return np.array(responses)

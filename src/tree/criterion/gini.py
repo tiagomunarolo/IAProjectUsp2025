@@ -10,6 +10,14 @@ def gini_impurity(**kwargs):
     # p_i = n_i / n
     # n_i = quantidade de elementos da classe i
     # n = total de elementos
-    _, counts = np.unique(kwargs['y'], return_counts=True)
+    size_left = kwargs['x_left'].shape[0]
+    _, counts = np.unique(kwargs['y_left'], return_counts=True)
     probs = counts / counts.sum()
-    return 1 - np.sum(probs ** 2)
+    left = 1 - np.sum(probs ** 2)
+
+    size_right = kwargs['x_right'].shape[0]
+    _, counts = np.unique(kwargs['y_right'], return_counts=True)
+    probs = counts / counts.sum()
+    right = 1 - np.sum(probs ** 2)
+
+    return (left * size_left + right * size_right) / (size_left + size_right)

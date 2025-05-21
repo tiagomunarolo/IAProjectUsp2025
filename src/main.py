@@ -35,6 +35,9 @@ def train(tree: DecisionTreeAdapted) -> None:
 
 def main():
     logger.info('Training Decision Tree')
+    logger.info(f'Using criterion: {CRITERION}')
+    logger.info(f'Using max_depth: {MAX_DEPTH}')
+    logger.info(f'Using min_samples_split: {MIN_SAMPLES_SPLIT}')
     tree = DecisionTreeAdapted(
         max_depth=MAX_DEPTH,
         min_samples_split=MIN_SAMPLES_SPLIT,
