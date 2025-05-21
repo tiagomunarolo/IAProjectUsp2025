@@ -15,7 +15,7 @@ def gini_impurity(y):
     return 1 - np.sum(probs ** 2)
 
 
-class DecisionTree(BaseTree):
+class DecisionTreeAdapted(BaseTree):
     """
     Implementação da árvore de decisão
     """
@@ -26,8 +26,7 @@ class DecisionTree(BaseTree):
         self.num_classes = None
         self.tree_ = None
 
-    @staticmethod
-    def _find_best_split(x: pd.DataFrame, y: np.ndarray) -> tuple:
+    def _find_best_split(self, x: pd.DataFrame, y: np.ndarray) -> tuple:
         """
         Busca o melhor split, com base na impureza
         """
@@ -50,6 +49,9 @@ class DecisionTree(BaseTree):
                 y_right = y[x[feature] > t]  # seleciona todas linhas cujo valor feature > t
                 if len(y_left) == 0 or len(y_right) == 0:
                     # ignora splits que resultam em vazios
+                    continue
+                if len(y_left) < self.min_samples_split or len(y_right) < self.min_samples_split:
+                    # ignora splits que resultam em folhas < min_samples_split
                     continue
                 # passa a árvore a esquerda e a direita para computar o critério
                 score = gini_impurity(y_left) + gini_impurity(y_right)
@@ -92,7 +94,7 @@ class DecisionTree(BaseTree):
                 node['right'] = self._build_tree(x_right, y_right, depth + 1)
         return node
 
-    def fit(self, x: np.ndarray, y: np.ndarray) -> 'DecisionTree':
+    def fit(self, x: np.ndarray, y: np.ndarray) -> 'DecisionTreeAdapted':
         # total de classes no dataset
         self.num_classes = len(set(y))
         # numero de features no dataset

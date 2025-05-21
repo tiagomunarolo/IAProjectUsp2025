@@ -1,1 +1,1 @@
-from .tree import DecisionTree
+from .tree import DecisionTreeAdapted
