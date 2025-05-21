@@ -102,7 +102,7 @@ class DecisionTreeAdapted(BaseTree):
                 node['right'] = self._build_tree(x_right, y_right, depth + 1)
         return node
 
-    def fit(self, x: np.ndarray, y: np.ndarray) -> 'DecisionTreeAdapted':
+    def fit(self, x: pd.DataFrame, y: pd.Series) -> 'DecisionTreeAdapted':
         """ Processo de trenamento da árvore de decisão"""
         # total de classes no dataset
         self.num_classes = len(set(y))

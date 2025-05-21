@@ -108,6 +108,7 @@ class DataProcessing:
             if isinstance(df[col].dtype, BoolDType):
                 continue
             df[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
+        df = df.astype('float32')
         return df
 
     def process_dataset(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
