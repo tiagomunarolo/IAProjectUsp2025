@@ -105,6 +105,7 @@ class DecisionTreeAdapted(BaseTree):
                 delayed(self._build_tree)(x, y, depth, side) for x, y, depth, side in _tree_data)
             node['left'] = response[0]
             node['right'] = response[1]
+            node.pop('predicted_class')
         return node
 
     def fit(self, x: pd.DataFrame, y: pd.Series) -> 'DecisionTreeAdapted':
