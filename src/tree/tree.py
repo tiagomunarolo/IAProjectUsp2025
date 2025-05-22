@@ -33,16 +33,12 @@ class DecisionTreeAdapted(BaseTree):
         """
         Busca o melhor split, com base na impureza
         """
-        # m = num de amostras, n = num de features
-        m, n = x.shape
         # melhor feature e threshold
         best_feature, best_thresh = None, None
         # melhor critério de impureza
         best_criterion = float('inf')
         # para cada feature/atributo
         for index, feature in enumerate(x.columns.tolist()):
-            logger.debug(f'Analysing feature [{feature}]: {index + 1}/{n}')
-
             thresholds = np.unique(x[feature])
             # limita o numero de thresholds para 1000
             if len(thresholds) > 100:
@@ -72,7 +68,7 @@ class DecisionTreeAdapted(BaseTree):
                     best_thresh = t
         return best_feature, best_thresh
 
-    def _build_tree(self, x: np.ndarray, y: np.ndarray, depth: int):
+    def _build_tree(self, x: np.ndarray, y: np.ndarray, depth: int, parent: str = 'root'):
         """
         Construção da árvore de maneira recursiva
         :param x: features do dataset
@@ -89,6 +85,9 @@ class DecisionTreeAdapted(BaseTree):
             feature, threshold = self._find_best_split(x, y)
             # melhor split selecionado
             if feature is not None:
+                logger.debug(f'Parent: {parent} | '
+                             f'Depth = {depth} | Best split: [{feature}]: {threshold}')
+
                 # separa os dados conforme o melhor split
                 indices_left = x[feature] <= threshold
                 x_left, y_left = x[indices_left], y[indices_left]
@@ -98,8 +97,8 @@ class DecisionTreeAdapted(BaseTree):
                 # insere o melhor threshold na arvore (para o atual split)
                 node['threshold'] = threshold
                 # cria a árvore a esquerda e a direita
-                node['left'] = self._build_tree(x_left, y_left, depth + 1)
-                node['right'] = self._build_tree(x_right, y_right, depth + 1)
+                node['left'] = self._build_tree(x_left, y_left, depth + 1, 'left')
+                node['right'] = self._build_tree(x_right, y_right, depth + 1, 'right')
         return node
 
     def fit(self, x: pd.DataFrame, y: pd.Series) -> 'DecisionTreeAdapted':
