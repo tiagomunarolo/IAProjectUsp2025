@@ -15,8 +15,8 @@ def f1_proxy(y: np.ndarray):
 
 
 def custom_criterion(**kwargs):
-    size_left = kwargs['x_left'].shape[0]
-    size_right = kwargs['x_right'].shape[0]
+    size_left = kwargs['y_left'].shape[0]
+    size_right = kwargs['y_right'].shape[0]
     total = size_left + size_right
     # critério gini a esquerda
     _, counts = np.unique(kwargs['y_left'], return_counts=True)
@@ -29,9 +29,9 @@ def custom_criterion(**kwargs):
     # critério gini geral
     gini = (gini_left * size_left + gini_right * size_right) / total
     # critério f1 a esquerda
-    f1_left = f1_proxy(kwargs['y_left'].values)
+    f1_left = f1_proxy(kwargs['y_left'])
     # critério f1 a direita
-    f1_right = f1_proxy(kwargs['y_right'].values)
+    f1_right = f1_proxy(kwargs['y_right'])
     # critério f1 geral
     f1 = (f1_left * size_left + f1_right * size_right) / total
 
