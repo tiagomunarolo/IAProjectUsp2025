@@ -39,13 +39,39 @@ DUMMY_COLS = [
     'SEXO',
     'ESCOLARIDADE',
     'ESTADO_CIVIL',
-    'ATRASO_PAGTO_SETEMBRO',
-    'ATRASO_PAGTO_AGOSTO',
-    'ATRASO_PAGTO_JULHO',
-    'ATRASO_PAGTO_JUNHO',
-    'ATRASO_PAGTO_MAIO',
-    'ATRASO_PAGTO_ABRIL',
+    'ATRASO_SETEMBRO',
+    'ATRASO_AGOSTO',
+    'ATRASO_JULHO',
+    'ATRASO_JUNHO',
+    'ATRASO_MAIO',
+    'ATRASO_ABRIL',
 ]
+
+RENAME_COLS = {
+    'LIMIT_BAL': 'LIMITE_DE_CREDITO',
+    'SEX': 'SEXO',
+    'EDUCATION': 'ESCOLARIDADE',
+    'MARRIAGE': 'ESTADO_CIVIL',
+    'AGE': 'IDADE',
+    'PAY_0': 'ATRASO_SETEMBRO',
+    'PAY_2': 'ATRASO_AGOSTO',
+    'PAY_3': 'ATRASO_JULHO',
+    'PAY_4': 'ATRASO_JUNHO',
+    'PAY_5': 'ATRASO_MAIO',
+    'PAY_6': 'ATRASO_ABRIL',
+    'BILL_AMT1': 'BOLETO_SETEMBRO',
+    'BILL_AMT2': 'BOLETO_AGOSTO',
+    'BILL_AMT3': 'BOLETO_JULHO',
+    'BILL_AMT4': 'BOLETO_JUNHO',
+    'BILL_AMT5': 'BOLETO_MAIO',
+    'BILL_AMT6': 'BOLETO_ABRIL',
+    'PAY_AMT1': 'VALOR_PAGO_SETEMBRO',
+    'PAY_AMT2': 'VALOR_PAGO_AGOSTO',
+    'PAY_AMT3': 'VALOR_PAGO_JULHO',
+    'PAY_AMT4': 'VALOR_PAGO_JUNHO',
+    'PAY_AMT5': 'VALOR_PAGO_MAIO',
+    'PAY_AMT6': 'VALOR_PAGO_ABRIL',
+    'default.payment.next.month': 'LABEL', }
 
 
 class DataProcessing:
@@ -57,49 +83,30 @@ class DataProcessing:
 
     @staticmethod
     def rename_and_filter_columns(df: pd.DataFrame) -> pd.DataFrame:
-        df.rename(columns={
-            'LIMIT_BAL': 'LIMITE_DE_CREDITO',
-            'SEX': 'SEXO',
-            'EDUCATION': 'ESCOLARIDADE',
-            'MARRIAGE': 'ESTADO_CIVIL',
-            'AGE': 'IDADE',
-            'PAY_0': 'ATRASO_PAGTO_SETEMBRO',
-            'PAY_2': 'ATRASO_PAGTO_AGOSTO',
-            'PAY_3': 'ATRASO_PAGTO_JULHO',
-            'PAY_4': 'ATRASO_PAGTO_JUNHO',
-            'PAY_5': 'ATRASO_PAGTO_MAIO',
-            'PAY_6': 'ATRASO_PAGTO_ABRIL',
-            'BILL_AMT1': 'VALOR_BOLETO_SETEMBRO',
-            'BILL_AMT2': 'VALOR_BOLETO_AGOSTO',
-            'BILL_AMT3': 'VALOR_BOLETO_JULHO',
-            'BILL_AMT4': 'VALOR_BOLETO_JUNHO',
-            'BILL_AMT5': 'VALOR_BOLETO_MAIO',
-            'BILL_AMT6': 'VALOR_BOLETO_ABRIL',
-            'PAY_AMT1': 'VALOR_PAGO_ATE_SETEMBRO',
-            'PAY_AMT2': 'VALOR_PAGO_ATE_AGOSTO',
-            'PAY_AMT3': 'VALOR_PAGO_ATE_JULHO',
-            'PAY_AMT4': 'VALOR_PAGO_ATE_JUNHO',
-            'PAY_AMT5': 'VALOR_PAGO_ATE_MAIO',
-            'PAY_AMT6': 'VALOR_PAGO_ATE_ABRIL',
-            'default.payment.next.month': 'LABEL',
-
-        }, inplace=True)
+        # rename columns
+        df.rename(columns=RENAME_COLS, inplace=True)
+        # Drop ID
         df = df.drop('ID', axis=1)
+        # Ajusta escolaridade
+        df.ESCOLARIDADE = df.ESCOLARIDADE.replace({0: 4, 5: 4, 6: 4})
+        # Estado civil (0 e 3 são tratados como solteiros)
+        df.ESTADO_CIVIL = df.ESTADO_CIVIL.replace({0: 2, 3: 2})
         # 1=male, 2=female
         df.SEXO = df.SEXO.map({1: 'Masculino', 2: 'Feminino'})
         # 1=graduate school, 2=university, 3=high school, 4=others, 5=unknown, 6=unknown
         df.ESCOLARIDADE = df.ESCOLARIDADE.map(
-            {1: 'Pos_graduacao', 2: 'Graduacao', 3: 'Ensino_medio', 4: 'Outros', 5: 'Desconhecido', 6: 'Desconhecido'})
+            {1: 'Pos_graduacao', 2: 'Graduacao', 3: 'Ensino_medio', 4: 'Outros'})
         # (1=married, 2=single, 3=others)
         df.ESTADO_CIVIL = df.ESTADO_CIVIL.map({1: 'Casado', 2: 'Solteiro', 3: 'Outros'})
         # -1=pay duly, 1=payment delay for one month, 2=payment delay for two months, ...
         # < 0 = antecipado, 0 = nao_atrasado, > 0 = atrasado
-        for col in ['ATRASO_PAGTO_SETEMBRO', 'ATRASO_PAGTO_AGOSTO', 'ATRASO_PAGTO_JULHO', 'ATRASO_PAGTO_JUNHO',
-                    'ATRASO_PAGTO_MAIO', 'ATRASO_PAGTO_ABRIL']:
-            df[col] = df[col].apply(lambda x: 'atrasado' if x > 0 else x)
-            df[col] = df[col].apply(lambda x: 'nao_atrasado' if not x else x)
-            df[col] = df[col].apply(lambda x: 'antecipado' if isinstance(x, int) and x < 0 else x)
-
+        for col in ['ATRASO_SETEMBRO',
+                    'ATRASO_AGOSTO',
+                    'ATRASO_JULHO',
+                    'ATRASO_JUNHO',
+                    'ATRASO_MAIO',
+                    'ATRASO_ABRIL']:
+            df[col] = df[col].apply(lambda x: 'atrasado' if x > 0 else 'nao_atrasado')
         return df
 
     @staticmethod
