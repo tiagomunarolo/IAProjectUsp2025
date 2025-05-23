@@ -1,5 +1,8 @@
+from typing import Any, Generator
+
 import pandas as pd
 from numpy.dtypes import BoolDType
+from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
 
 # There are 25 variables:
@@ -77,6 +80,8 @@ RENAME_COLS = {
 class DataProcessing:
     def __init__(self, dataset_path):
         self.dataset_path = dataset_path
+        self.x = None
+        self.y = None
 
     def load_dataset(self) -> pd.DataFrame:
         return pd.read_csv(self.dataset_path)
@@ -118,7 +123,14 @@ class DataProcessing:
         df = df.astype('float32')
         return df
 
-    def process_dataset(self) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    def get_data(self, folds: int = 5) -> Generator:
+        k_fold = KFold(n_splits=folds, shuffle=True, random_state=42)
+        for train_index, test_index in k_fold.split(self.x):
+            x_train, x_test = self.x.iloc[train_index], self.x.iloc[test_index]
+            y_train, y_test = self.y.iloc[train_index], self.y.iloc[test_index]
+            yield x_train, x_test, y_train, y_test
+
+    def process_dataset(self) -> None:
         df = self.load_dataset()
         df = self.rename_and_filter_columns(df)
         x = df.drop('LABEL', axis=1)
@@ -126,10 +138,5 @@ class DataProcessing:
         for col in DUMMY_COLS:
             x = pd.get_dummies(x, columns=[col])
 
-        x = self.normalize_dataset(x)
-        # treino e teste (90/10)
-        return train_test_split(x, y,
-                                stratify=y,  # estratifica o dataset
-                                shuffle=True,  # embaralha
-                                test_size=0.1,  # 10% para teste
-                                random_state=42)
+        self.x = self.normalize_dataset(x)
+        self.y = y
