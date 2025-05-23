@@ -4,16 +4,17 @@ from collections import deque
 from joblib import Parallel, delayed
 from typing import Callable
 from src.tree.splitter_cython import find_best_split_cython  # fazer build dos arquivos em cython
-from src.tree.criterion import gini_impurity
-from src.tree.criterion import custom_criterion
+from src.tree.criterion import *
 from src.tree.interfaces import BaseTree
 
 
 class Criterion:
     @staticmethod
     def get_criterion(criterion: str) -> Callable:
-        if criterion == 'custom':
-            return custom_criterion
+        if criterion == 'f1_proxy':
+            return f1_proxy_impurity
+        elif criterion == 'f1_gini':
+            return f1_gini
 
         # Default
         return gini_impurity
@@ -52,6 +53,8 @@ class DecisionTreeAdapted(BaseTree):
             item = stack.pop()
             x, y, depth, node = item['x'], item['y'], item['depth'], item['node']
             classes, counts = np.unique(y, return_counts=True)
+            if not classes.size:
+                continue
             # A classe mais prevalente é a predita
             node['predicted_class'] = int(classes[np.argmax(counts)])
             # Se chegou na profundidade maxima ou se não houver amostras suficientes para fazer um split

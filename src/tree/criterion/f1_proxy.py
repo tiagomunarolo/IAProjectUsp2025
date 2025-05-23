@@ -14,20 +14,10 @@ def f1_proxy(y: np.ndarray):
     return f1_score(y, predicted)
 
 
-def custom_criterion(**kwargs):
+def f1_proxy_impurity(**kwargs):
     size_left = kwargs['y_left'].shape[0]
     size_right = kwargs['y_right'].shape[0]
     total = size_left + size_right
-    # critério gini a esquerda
-    _, counts = np.unique(kwargs['y_left'], return_counts=True)
-    probs = counts / counts.sum()
-    gini_left = 1 - np.sum(probs ** 2)
-    # critério gini a direita
-    _, counts = np.unique(kwargs['y_right'], return_counts=True)
-    probs = counts / counts.sum()
-    gini_right = 1 - np.sum(probs ** 2)
-    # critério gini geral
-    gini = (gini_left * size_left + gini_right * size_right) / total
     # critério f1 a esquerda
     f1_left = f1_proxy(kwargs['y_left'])
     # critério f1 a direita
@@ -35,4 +25,4 @@ def custom_criterion(**kwargs):
     # critério f1 geral
     f1 = (f1_left * size_left + f1_right * size_right) / total
 
-    return gini * (1 - f1)
+    return 1 - f1

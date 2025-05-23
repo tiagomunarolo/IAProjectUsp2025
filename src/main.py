@@ -11,10 +11,10 @@ from src.tree import DecisionTreeAdapted
 load_dotenv()
 
 DATA_PATH = os.getenv('DATA_PATH')
-MAX_DEPTH = int(os.getenv('MAX_DEPTH', 3))
-FOLDS = int(os.getenv('FOLDS', 5))
+MAX_DEPTH = int(os.getenv('MAX_DEPTH', 5))
+FOLDS = int(os.getenv('FOLDS', 10))
 MIN_SAMPLES_SPLIT = int(os.getenv('MIN_SAMPLES_SPLIT', 2))
-CRITERION = os.getenv('CRITERION', 'custom')
+CRITERION = os.getenv('CRITERION', 'f1_gini')
 
 logger.info('Training Decision Tree')
 logger.info(f'Using criterion: {CRITERION}')
