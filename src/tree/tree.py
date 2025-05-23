@@ -1,5 +1,8 @@
+from typing import Callable
+
 import numpy as np
 import pandas as pd
+import sklearn.base
 from loguru import logger
 from collections import deque
 from joblib import Parallel, delayed
@@ -16,12 +19,12 @@ class DecisionTreeAdapted(BaseTree):
 
     def __init__(self, max_depth: int, min_samples_split: int = 2, criterion: str = 'gini'):
         super().__init__(max_depth, min_samples_split)
-        self.num_features = None
-        self.feature_names = None
-        self.num_classes = None
-        self.tree_ = None
-        self.criterion = Criterion.get_criterion(criterion)
-        self._hybrid_model = LogisticRegression
+        self.num_features: int = None  # quantidade de features
+        self.feature_names: list[str] = None  # nomes das features
+        self.num_classes: int = None  # quantidade de classes (0 e 1 no caso binário)
+        self.tree_: dict = None  # Estrutura da árvore
+        self.criterion: Callable = Criterion.get_criterion(criterion)  # Critério de divisão (função)
+        self._hybrid_model: sklearn.base.BaseEstimator = LogisticRegression  # Modelo híbrido (Se utilizado)
 
     def _build_tree(self, x: np.ndarray, y: np.ndarray, depth: int) -> dict:
         """
@@ -111,8 +114,7 @@ class DecisionTreeAdapted(BaseTree):
     def _predict_one(x: pd.DataFrame, node: dict) -> int:
         """ Predição para um dado X"""
         while 'feature' in node:
-            feat = x[node['feature']]
-            threshold = node['threshold']
+            feat, threshold = x[node['feature']], node['threshold']
             node = node['left'] if feat <= threshold else node['right']
         if 'hybrid_model_prediction' in node:
             return node['hybrid_model_prediction'](X=[x])
@@ -120,7 +122,4 @@ class DecisionTreeAdapted(BaseTree):
 
     def predict(self, x: pd.DataFrame) -> np.array:
         """ Predição para um conjunto de dados """
-        responses = []
-        for index in range(x.shape[0]):
-            responses.append(int(self._predict_one(x.iloc[index, :], self.tree_)))
-        return np.array(responses)
+        return np.array([int(self._predict_one(x.iloc[index, :], self.tree_)) for index in range(x.shape[0])])
