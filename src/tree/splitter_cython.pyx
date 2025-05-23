@@ -22,8 +22,8 @@ def find_best_split_cython(
 
     for threshold in thresholds:
         mask = feature <= threshold
-        y_left = y[mask]
-        y_right = y[~mask]
+        y_left, x_left = y[mask], x[mask]
+        y_right, x_right = y[~mask], x[~mask]
 
         if y_left.shape[0] < min_samples_split or y_right.shape[0] < min_samples_split:
             continue
@@ -31,8 +31,8 @@ def find_best_split_cython(
         score = criterion(
             y_left=y_left,
             y_right=y_right,
-            x_left=None,
-            x_right=None
+            x_left=x_left,
+            x_right=x_right
         )
 
         if score < best_score:

@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from loguru import logger
 from collections import deque
 from joblib import Parallel, delayed
 from src.tree.splitter_cython import find_best_split_cython  # fazer build dos arquivos em cython
@@ -54,7 +55,9 @@ class DecisionTreeAdapted(BaseTree):
                 _delayed(x, y, i, self.min_samples_split, self.criterion) for i in range(self.num_features))
             # ordena os splits pela impureza
             best_split_parallel.sort(key=lambda key: key[0])
-            _, threshold, feature_index = best_split_parallel[0]
+            score, threshold, feature_index = best_split_parallel[0]
+            logger.debug(f'Melhor split: '
+                         f'{self.feature_names[feature_index]} <= {threshold}, score: {score}')
             # separa os dados conforme o melhor split
             mask = x[:, feature_index] <= threshold
             x_left, y_left = x[mask], y[mask]
