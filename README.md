@@ -2,6 +2,20 @@
 
 Arvore de decisão com impureza customizada
 
+# Considerações importantes
+Build dos arquivos em cython: `python setup.py build_ext --inplace`
+
+# Criar .env:
+Na raiz do projeto: criar um arquivo .env com as seguintes variáveis(Exemplo):
+
+```bash 
+DATA_PATH=/Users/tiago_m2/PycharmProjects/IAProjectUsp2025/src/data/UCI_Credit_Card.csv
+MAX_DEPTH=3
+MIN_SAMPLES_SPLIT=2
+FOLDS=5
+CRITERION=custom
+```
+
 Estrutura do Diretório:
 src
 ├── main.py (main file)

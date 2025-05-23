@@ -1,9 +1,8 @@
-from typing import Any, Generator
+from typing import Generator
 
 import pandas as pd
 from numpy.dtypes import BoolDType
 from sklearn.model_selection import KFold
-from sklearn.model_selection import train_test_split
 
 # There are 25 variables:
 #
@@ -120,7 +119,6 @@ class DataProcessing:
             if isinstance(df[col].dtype, BoolDType):
                 continue
             df[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
-        df = df.astype('float32')
         return df
 
     def get_data(self, folds: int = 5) -> Generator:
@@ -137,6 +135,9 @@ class DataProcessing:
         y = df.LABEL  # label
         for col in DUMMY_COLS:
             x = pd.get_dummies(x, columns=[col])
-
-        self.x = self.normalize_dataset(x)
+        # set type to float
+        x = self.normalize_dataset(x)
+        x = x.astype('float64')
+        self.x = x
+        y = y.astype('int32')
         self.y = y
