@@ -1,8 +1,7 @@
 import numpy as np
 import pandas as pd
+from collections import deque
 from joblib import Parallel, delayed
-
-from loguru import logger
 from typing import Callable
 from src.tree.criterion import gini_impurity
 from src.tree.criterion import custom_criterion
@@ -37,7 +36,6 @@ class DecisionTreeAdapted(BaseTree):
         n_samples, n_features = x.shape
         feature = x[:, feature_idx]
         best_score = np.inf
-        # Usa amostragem inteligente ao invés de np.unique
         thresholds = np.unique(feature)
         if len(thresholds) > 100:
             thresholds = np.linspace(feature.min(), feature.max(), num=100, endpoint=False)
@@ -70,43 +68,49 @@ class DecisionTreeAdapted(BaseTree):
 
     def _build_tree(self, x: np.ndarray, y: np.ndarray, depth: int, parent: str = 'root'):
         """
-        Construção da árvore de maneira recursiva
+        Construção da árvore de maneira iterativa
         :param x: features do dataset
         :param y: classes do dataset
         :param depth: profundidade da árvore
         """
-        num_samples_per_class = [np.sum(y == i) for i in range(self.num_classes)]
-        predicted_class = np.argmax(num_samples_per_class)
-        # criando o nó da árvore (classe predita = maior quantidade de amostras)
-        node = {'predicted_class': int(predicted_class)}
-        if depth < self.max_depth and y.shape[0] >= self.min_samples_split:
-            # enquanto não chegou na profundidade maxima
-            results = Parallel(n_jobs=-1)(delayed(self._find_best_split)(i, x, y) for i in range(x.shape[1]))
-            results.sort(key=lambda x: x[0])  # sort by score
-            _, threshold, feature_index = results[0]
-            if threshold is None:
-                return node
-            # melhor split selecionado
-            logger.debug(f'Parent: {parent} | '
-                         f'Depth = {depth} | '
-                         f'Best split: [{self.feature_names[feature_index]}]: {threshold}')
+        stack = deque()
+        root = {
+            'x': x,
+            'y': y,
+            'depth': depth,
+            'node': {}
+        }
+        stack.append(root)
 
+        while stack:
+            item = stack.pop()
+            x, y, depth, node = item['x'], item['y'], item['depth'], item['node']
+
+            classes, counts = np.unique(y, return_counts=True)
+            # A classe mais prevalente é a predita
+            node['predicted_class'] = int(classes[np.argmax(counts)])
+            # Se chegou na profundidade maxima ou se não houver amostras suficientes para fazer um split
+            if depth >= self.max_depth or len(x) < self.min_samples_split:
+                continue
+            # melhor split selecionado
+            best_split_parallel = Parallel(n_jobs=-1)(
+                delayed(self._find_best_split)(i, x, y) for i in range(self.num_features))
+            best_split_parallel.sort(key=lambda x: x[0])  # ordena os splits pela impureza
+            _, threshold, feature_index = best_split_parallel[0]
             # separa os dados conforme o melhor split
             mask = x[:, feature_index] <= threshold
             x_left, y_left = x[mask], y[mask]
             x_right, y_right = x[~mask], y[~mask]
             # insere o melhor split na árvore de decisão
             node['feature'] = self.feature_names[feature_index]
-            # insere o melhor threshold na arvore (para o atual split)
             node['threshold'] = threshold
+            node['left'] = {}
+            node['right'] = {}
             # cria a árvore a esquerda e a direita
-            _tree_data = [[x_left, y_left, depth + 1, 'left'], [x_right, y_right, depth + 1, 'right']]
-            response = Parallel(n_jobs=-1)(
-                delayed(self._build_tree)(x, y, depth, side) for x, y, depth, side in _tree_data)
-            node['left'] = response[0]
-            node['right'] = response[1]
-            node.pop('predicted_class')
-        return node
+            stack.append({'x': x_left, 'y': y_left, 'depth': depth + 1, 'node': node['left']})
+            stack.append({'x': x_right, 'y': y_right, 'depth': depth + 1, 'node': node['right']})
+
+        return root['node']
 
     def fit(self, x: pd.DataFrame, y: pd.Series) -> 'DecisionTreeAdapted':
         """ Processo de trenamento da árvore de decisão"""
@@ -123,7 +127,7 @@ class DecisionTreeAdapted(BaseTree):
         return self
 
     @staticmethod
-    def _predict_one(x: pd.DataFrame, node: dict):
+    def _predict_one(x: pd.DataFrame, node: dict) -> int:
         """ Predição para um dado X"""
         while 'feature' in node:
             feat = x[node['feature']]
@@ -131,7 +135,7 @@ class DecisionTreeAdapted(BaseTree):
             node = node['left'] if feat <= threshold else node['right']
         return node['predicted_class']
 
-    def predict(self, x: pd.DataFrame) -> np.ndarray:
+    def predict(self, x: pd.DataFrame) -> np.array:
         """ Predição para um conjunto de dados """
         responses = []
         for index in range(x.shape[0]):
