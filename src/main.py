@@ -10,17 +10,18 @@ from src.tree import DecisionTreeAdapted
 
 load_dotenv()
 
-DATA_PATH = os.getenv('DATA_PATH')
-MAX_DEPTH = int(os.getenv('MAX_DEPTH', 5))
-# Kfold expect at least 2 splits
-FOLDS = max(2, int(os.getenv('FOLDS', 5)))
-MIN_SAMPLES_SPLIT = int(os.getenv('MIN_SAMPLES_SPLIT', 2))
-CRITERION = os.getenv('CRITERION', 'f1_gini')
+DATA_PATH = os.getenv('DATA_PATH')  # Caminho para o dataset
+MAX_DEPTH = int(os.getenv('MAX_DEPTH', 5))  # Profundidade máxima da árvore
+FOLDS = max(2, int(os.getenv('FOLDS', 5)))  # Quantidade de folds na validação cruzada
+MIN_SAMPLES_SPLIT = int(os.getenv('MIN_SAMPLES_SPLIT', 2))  # Número mínimo de amostras necessárias para dividir um nó
+CRITERION = os.getenv('CRITERION', 'f1_gini')  # Critério de divisão
+HYBRID_MODEL = bool(os.getenv('HYBRID_MODEL', '') == 'True')  # Usar o modelo híbrido?
 
 logger.info('Training Decision Tree')
 logger.info(f'Using criterion: {CRITERION}')
 logger.info(f'Using max_depth: {MAX_DEPTH}')
 logger.info(f'Using min_samples_split: {MIN_SAMPLES_SPLIT}')
+logger.info(f'Using hybrid_model: {HYBRID_MODEL}')
 
 
 def process_dataset() -> Generator:
@@ -37,7 +38,7 @@ def train(tree: DecisionTreeAdapted) -> None:
     """ Treina a árvore de decisão """
     accuracy, f1 = [], []
     for x_train, x_test, y_train, y_test in process_dataset():
-        tree.fit(x_train, y_train)
+        tree.fit(x_train, y_train, hybrid=HYBRID_MODEL)
         y_hat = tree.predict(x_test)
         accuracy.append(accuracy_score(y_test, y_hat))
         f1.append(f1_score(y_test, y_hat))

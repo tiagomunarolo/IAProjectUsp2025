@@ -3,6 +3,7 @@ import pandas as pd
 from loguru import logger
 from collections import deque
 from joblib import Parallel, delayed
+from sklearn.linear_model import LogisticRegression
 from src.tree.splitter_cython import find_best_split_cython  # fazer build dos arquivos em cython
 from src.tree.criterion import Criterion
 from src.tree.interfaces import BaseTree
@@ -20,6 +21,7 @@ class DecisionTreeAdapted(BaseTree):
         self.num_classes = None
         self.tree_ = None
         self.criterion = Criterion.get_criterion(criterion)
+        self._hybrid_model = LogisticRegression
 
     def _build_tree(self, x: np.ndarray, y: np.ndarray, depth: int) -> dict:
         """
@@ -73,7 +75,23 @@ class DecisionTreeAdapted(BaseTree):
 
         return root['node']
 
-    def fit(self, x: pd.DataFrame, y: pd.Series) -> 'DecisionTreeAdapted':
+    def _hybrid_leaf(self, node: dict, x: np.ndarray, y: np.ndarray):
+        """ Para cada folha, cria um modelo híbrido"""
+        if 'feature' in node:
+            _feature, _threshold = node['feature'], node['threshold']
+            index = self.feature_names.index(_feature)
+            mask = x[:, index] <= _threshold
+            if node.get('left'):
+                self._hybrid_leaf(node['left'], x[mask], y[mask])
+            if node.get('right'):
+                self._hybrid_leaf(node['right'], x[~mask], y[~mask])
+        else:  # nó folha
+            try:
+                node['hybrid_model_prediction'] = self._hybrid_model().fit(x, y).predict
+            except ValueError:
+                node['hybrid_model_prediction'] = lambda *args, **kwargs: node['predicted_class']
+
+    def fit(self, x: pd.DataFrame, y: pd.Series, hybrid: bool = False) -> 'DecisionTreeAdapted':
         """ Processo de trenamento da árvore de decisão"""
         # total de classes no dataset
         self.num_classes = len(set(y))
@@ -85,6 +103,8 @@ class DecisionTreeAdapted(BaseTree):
         x = x.to_numpy()
         y = y.to_numpy()
         self.tree_ = self._build_tree(x, y, depth=0)
+        if hybrid:  # cria a árvore do modelo híbrido nas folhas
+            self._hybrid_leaf(self.tree_, x, y)
         return self
 
     @staticmethod
@@ -94,6 +114,8 @@ class DecisionTreeAdapted(BaseTree):
             feat = x[node['feature']]
             threshold = node['threshold']
             node = node['left'] if feat <= threshold else node['right']
+        if 'hybrid_model_prediction' in node:
+            return node['hybrid_model_prediction'](X=[x])
         return node['predicted_class']
 
     def predict(self, x: pd.DataFrame) -> np.array:
