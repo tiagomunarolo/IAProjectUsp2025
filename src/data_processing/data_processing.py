@@ -102,15 +102,6 @@ class DataProcessing:
             {1: 'Pos_graduacao', 2: 'Graduacao', 3: 'Ensino_medio', 4: 'Outros'})
         # (1=married, 2=single, 3=others)
         df.ESTADO_CIVIL = df.ESTADO_CIVIL.map({1: 'Casado', 2: 'Solteiro', 3: 'Outros'})
-        # -1=pay duly, 1=payment delay for one month, 2=payment delay for two months, ...
-        # < 0 = antecipado, 0 = nao_atrasado, > 0 = atrasado
-        for col in ['ATRASO_SETEMBRO',
-                    'ATRASO_AGOSTO',
-                    'ATRASO_JULHO',
-                    'ATRASO_JUNHO',
-                    'ATRASO_MAIO',
-                    'ATRASO_ABRIL']:
-            df[col] = df[col].apply(lambda x: 'atrasado' if x > 0 else 'nao_atrasado')
         return df
 
     @staticmethod
