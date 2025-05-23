@@ -2,22 +2,9 @@ import numpy as np
 import pandas as pd
 from collections import deque
 from joblib import Parallel, delayed
-from typing import Callable
 from src.tree.splitter_cython import find_best_split_cython  # fazer build dos arquivos em cython
-from src.tree.criterion import *
+from src.tree.criterion import Criterion
 from src.tree.interfaces import BaseTree
-
-
-class Criterion:
-    @staticmethod
-    def get_criterion(criterion: str) -> Callable:
-        if criterion == 'f1_proxy':
-            return f1_proxy_impurity
-        elif criterion == 'f1_gini':
-            return f1_gini
-
-        # Default
-        return gini_impurity
 
 
 class DecisionTreeAdapted(BaseTree):
@@ -33,7 +20,7 @@ class DecisionTreeAdapted(BaseTree):
         self.tree_ = None
         self.criterion = Criterion.get_criterion(criterion)
 
-    def _build_tree(self, x: np.ndarray, y: np.ndarray, depth: int, parent: str = 'root'):
+    def _build_tree(self, x: np.ndarray, y: np.ndarray, depth: int) -> dict:
         """
         Construção da árvore de maneira iterativa
         :param x: features do dataset
