@@ -7,6 +7,8 @@ class Criterion:
     @staticmethod
     def get_criterion(criterion: str) -> Callable:
         try:
+            if criterion == 'gini':
+                return gini
             # importa dinamicamente
             exec(f'from src.tree.criterion import {criterion}')
             criteria = eval(criterion)

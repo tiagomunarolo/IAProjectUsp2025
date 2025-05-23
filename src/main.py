@@ -12,7 +12,8 @@ load_dotenv()
 
 DATA_PATH = os.getenv('DATA_PATH')
 MAX_DEPTH = int(os.getenv('MAX_DEPTH', 5))
-FOLDS = int(os.getenv('FOLDS', 10))
+# Kfold expect at least 2 splits
+FOLDS = max(2, int(os.getenv('FOLDS', 5)))
 MIN_SAMPLES_SPLIT = int(os.getenv('MIN_SAMPLES_SPLIT', 2))
 CRITERION = os.getenv('CRITERION', 'f1_gini')
 
