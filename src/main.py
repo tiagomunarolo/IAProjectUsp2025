@@ -3,7 +3,7 @@ import numpy as np
 from loguru import logger
 from typing import Generator
 from src.data_processing import DataProcessing
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, recall_score
 from dotenv import load_dotenv
 
 from src.tree import DecisionTreeAdapted
@@ -36,15 +36,17 @@ def process_dataset() -> Generator:
 
 def train(tree: DecisionTreeAdapted) -> None:
     """ Treina a árvore de decisão """
-    accuracy, f1 = [], []
+    accuracy, f1, recall_1 = [], [], []
     for x_train, x_test, y_train, y_test in process_dataset():
         tree.fit(x_train, y_train, hybrid=HYBRID_MODEL)
         y_hat = tree.predict(x_test)
         accuracy.append(accuracy_score(y_test, y_hat))
         f1.append(f1_score(y_test, y_hat))
+        recall_1.append(recall_score(y_test, y_hat, pos_label=1))
 
     logger.info(f'Accuracy[{FOLDS}]: {np.mean(accuracy)}')
     logger.info(f'F1-Score[{FOLDS}]: {np.mean(f1)}')
+    logger.info(f'Recall [classe 1]: {np.mean(recall_1)}')
 
 
 def main():
