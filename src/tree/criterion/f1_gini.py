@@ -2,7 +2,7 @@
 Implementação aqui de um critério customizado
 """
 import numpy as np
-from sklearn.metrics import f1_score
+from src.tree.metrics.metrics import f1_score
 
 
 def f1_proxy(y: np.ndarray):
