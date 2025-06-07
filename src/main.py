@@ -3,7 +3,7 @@ import numpy as np
 from loguru import logger
 from typing import Generator
 from src.data_processing import DataProcessing
-from src.tree.metrics.metrics import accuracy, f1_score
+from src.metrics.metrics import accuracy, f1_score
 from dotenv import load_dotenv
 
 from src.tree import DecisionTreeAdapted
@@ -43,8 +43,8 @@ def train(tree: DecisionTreeAdapted) -> None:
         accuracy_list.append(accuracy(y_test, y_hat))
         f1_list.append(f1_score(y_test, y_hat))
 
-    logger.info(f'Accuracy[{FOLDS}]: {np.mean(accuracy_list)}')
-    logger.info(f'F1-Score[{FOLDS}]: {np.mean(f1_list)}')
+    logger.info(f'Accuracy[{FOLDS}-Folds]: {np.mean(accuracy_list)}')
+    logger.info(f'F1-Score[{FOLDS}-Folds]: {np.mean(f1_list)}')
 
 
 def main():
