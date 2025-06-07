@@ -7,6 +7,7 @@ from loguru import logger
 from collections import deque
 from joblib import Parallel, delayed
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 from src.tree.splitter_cython import find_best_split_cython  # fazer build dos arquivos em cython
 from src.tree.criterion import Criterion
 from src.tree.interfaces import BaseTree
@@ -24,7 +25,7 @@ class DecisionTreeAdapted(BaseTree):
         self.num_classes: int = None  # quantidade de classes (0 e 1 no caso binário)
         self.tree_: dict = None  # Estrutura da árvore
         self.criterion: Callable = Criterion.get_criterion(criterion)  # Critério de divisão (função)
-        self._hybrid_model: sklearn.base.BaseEstimator = LogisticRegression  # Modelo híbrido (Se utilizado)
+        self._hybrid_model: sklearn.base.BaseEstimator = SVC  # Modelo híbrido (Se utilizado)
 
     def _build_tree(self, x: np.ndarray, y: np.ndarray, depth: int) -> dict:
         """
@@ -90,7 +91,10 @@ class DecisionTreeAdapted(BaseTree):
                 self._hybrid_leaf(node['right'], x[~mask], y[~mask])
         else:  # nó folha
             try:
-                node['hybrid_model_prediction'] = self._hybrid_model().fit(x, y).predict
+                if len(x) < 100 or len(set(y)) == 1:
+                    # Folha com menos de 100 amostras ou com apenas uma classe
+                    raise ValueError
+                node['hybrid_model_prediction'] = self._hybrid_model().fit(x, y)
             except ValueError:
                 node['hybrid_model_prediction'] = lambda *args, **kwargs: node['predicted_class']
 
@@ -117,7 +121,10 @@ class DecisionTreeAdapted(BaseTree):
             feat, threshold = x[node['feature']], node['threshold']
             node = node['left'] if feat <= threshold else node['right']
         if 'hybrid_model_prediction' in node:
-            return node['hybrid_model_prediction'](X=[x])
+            try:
+                return node['hybrid_model_prediction'].predict(X=[x])
+            except AttributeError:  # Nó folha sem modelo híbrido
+                return node['hybrid_model_prediction']()
         return node['predicted_class']
 
     def predict(self, x: pd.DataFrame) -> np.array:
