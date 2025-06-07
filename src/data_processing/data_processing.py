@@ -2,6 +2,8 @@ from typing import Generator
 
 import pandas as pd
 from numpy.dtypes import BoolDType
+from src.plot import plot_histogram
+from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.model_selection import KFold
 
 # There are 25 variables:
@@ -73,6 +75,7 @@ RENAME_COLS = {
 class DataProcessing:
     def __init__(self, dataset_path):
         self.dataset_path = dataset_path
+        self.df = None
         self.x = None
         self.y = None
 
@@ -103,7 +106,8 @@ class DataProcessing:
         for col in df.columns:
             if isinstance(df[col].dtype, BoolDType):
                 continue
-            df[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
+            df[col] = df[col].astype('float64')
+            df.loc[:, col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
         return df
 
     def get_data(self, folds: int = 5) -> Generator:
@@ -113,13 +117,28 @@ class DataProcessing:
             y_train, y_test = self.y.iloc[train_index], self.y.iloc[test_index]
             yield x_train, x_test, y_train, y_test
 
-    def process_dataset(self) -> None:
+    @staticmethod
+    def plot_dataset(df: pd.DataFrame) -> None:
+        for col in df.columns:
+            plot_histogram(df[col], title=col)
+
+    def process_dataset(self, select_k: int = 0, plot_dataset: bool = False) -> None:
         df = self.load_dataset()
         df = self.rename_and_filter_columns(df)
-        x = df.drop('LABEL', axis=1)
         y = df.LABEL  # label
+        if plot_dataset:
+            self.plot_dataset(df=df)
         for col in DUMMY_COLS:
-            x = pd.get_dummies(x, columns=[col])
+            df = pd.get_dummies(df, columns=[col])
+
+        x = df.drop('LABEL', axis=1)
+        if select_k:  # feature selection
+            selector = SelectKBest(f_classif, k=select_k)
+            selector.fit_transform(x, y)
+            x = df[selector.get_feature_names_out()]
+
+        # save df
+        self.df = df
         # set type to float
         x = self.normalize_dataset(x)
         x = x.astype('float64')
