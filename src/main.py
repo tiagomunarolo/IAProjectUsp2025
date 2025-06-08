@@ -6,7 +6,7 @@ from src.data_processing import DataProcessing
 from src.metrics.metrics import accuracy, f1_score
 from dotenv import load_dotenv
 
-from src.tree import DecisionTreeAdapted
+from src.tree import DecisionTreeAdapted, HybridOption
 
 load_dotenv()
 
@@ -17,7 +17,7 @@ MIN_SAMPLES_SPLIT = int(os.getenv('MIN_SAMPLES_SPLIT', 2))  # Número mínimo de
 CRITERION = os.getenv('CRITERION', 'f1_gini')  # Critério de divisão
 SELECT_K = int(os.getenv('SELECT_K', 0))  # Quantidade de features/colunas a serem selecionadas
 PLOT_DATASET = bool(os.getenv('PLOT_DATASET', '') == 'True')  # Plotar o dataset
-HYBRID_MODEL = bool(os.getenv('HYBRID_MODEL', '') == 'True')  # Usar o modelo híbrido?
+HYBRID_MODEL = str(os.getenv('HYBRID_MODEL', 'NONE'))  # Usar o modelo híbrido?
 
 logger.info('Treinando: Decision Tree')
 logger.info(f'Usando Critério: {CRITERION}')
@@ -43,7 +43,7 @@ def train(tree: DecisionTreeAdapted) -> None:
     """ Treina a árvore de decisão """
     accuracy_list, f1_list = [], []
     for x_train, x_test, y_train, y_test in process_dataset():
-        tree.fit(x_train, y_train, hybrid=HYBRID_MODEL)
+        tree.fit(x_train, y_train)
         y_hat = tree.predict(x_test)
         accuracy_list.append(accuracy(y_test, y_hat))
         f1_list.append(f1_score(y_test, y_hat))
@@ -57,10 +57,20 @@ def main():
     Inicializa o algoritmo
     Treina a árvore de decisão
     """
+    # por default,  não usa o modelo híbrido nas folhas
+    _hybrid_model = HybridOption.NONE
+    if HybridOption.SVM.name.lower() == HYBRID_MODEL.lower():
+        _hybrid_model = HybridOption.SVM
+    elif HybridOption.KNN.name.lower() == HYBRID_MODEL.lower():
+        _hybrid_model = HybridOption.KNN
+    elif HybridOption.LR.name.lower() == HYBRID_MODEL.lower():
+        _hybrid_model = HybridOption.LR
+
     tree = DecisionTreeAdapted(
         max_depth=MAX_DEPTH,
         min_samples_split=MIN_SAMPLES_SPLIT,
-        criterion=CRITERION
+        criterion=CRITERION,
+        hybrid_model=_hybrid_model
     )
     train(tree=tree)
     logger.info(tree.tree_)

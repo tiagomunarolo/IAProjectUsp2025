@@ -11,11 +11,11 @@ Na raiz do projeto: criar um arquivo .env com as seguintes variáveis(Exemplo):
 ```bash 
 DATA_PATH=/Users/tiago_m2/PycharmProjects/IAProjectUsp2025/src/data/UCI_Credit_Card.csv
 MAX_DEPTH=5
-MIN_SAMPLES_SPLIT=2
-HYBRID_MODEL=False
+MIN_SAMPLES_SPLIT=50
+HYBRID_MODEL=None
 SELECT_K=0
 FOLDS=5
-CRITERION=f1_gini
+CRITERION=f1_weighted_gini
 PLOT_DATASET=False
 ```
 
