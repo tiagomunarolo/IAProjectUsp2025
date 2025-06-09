@@ -9,8 +9,6 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.tree import DecisionTreeClassifier
 from dotenv import load_dotenv
 
-import pandas as pd
-
 """
 Arquivo de testes
 Rodar o algoritmo AS-IS com o dataset e comparar com o nosso

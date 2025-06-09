@@ -2,14 +2,33 @@ from typing import Callable
 
 import numpy as np
 import pandas as pd
-import sklearn.base
+from enum import Enum
 from loguru import logger
 from collections import deque
 from joblib import Parallel, delayed
+from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
 from src.tree.splitter_cython import find_best_split_cython  # fazer build dos arquivos em cython
 from src.tree.criterion import Criterion
 from src.tree.interfaces import BaseTree
+
+
+class HybridOption(Enum):
+    """
+    Opções para o modelo híbrido
+    """
+    NONE = None
+    SVM = SVC, {
+        'kernel': 'rbf'
+    }
+    KNN = KNeighborsClassifier, {
+        'n_neighbors': 5
+    }
+    LR = LogisticRegression, {
+        'penalty': 'l2',  # Regularização padrão e robusta
+        'class_weight': 'balanced',  # Compensa o desbalanceamento
+    }
 
 
 class DecisionTreeAdapted(BaseTree):
@@ -17,14 +36,20 @@ class DecisionTreeAdapted(BaseTree):
     Implementação da árvore de decisão
     """
 
-    def __init__(self, max_depth: int, min_samples_split: int = 2, criterion: str = 'gini'):
+    def __init__(
+            self,
+            max_depth: int,
+            min_samples_split: int = 2,
+            criterion: str = 'gini',
+            hybrid_model: HybridOption = HybridOption.NONE
+    ):
         super().__init__(max_depth, min_samples_split)
         self.num_features: int = None  # quantidade de features
         self.feature_names: list[str] = None  # nomes das features
         self.num_classes: int = None  # quantidade de classes (0 e 1 no caso binário)
         self.tree_: dict = None  # Estrutura da árvore
         self.criterion: Callable = Criterion.get_criterion(criterion)  # Critério de divisão (função)
-        self._hybrid_model: sklearn.base.BaseEstimator = LogisticRegression  # Modelo híbrido (Se utilizado)
+        self.hybrid_model = hybrid_model  # Modelo híbrido (Se utilizado)
 
     def _build_tree(self, x: np.ndarray, y: np.ndarray, depth: int) -> dict:
         """
@@ -90,11 +115,15 @@ class DecisionTreeAdapted(BaseTree):
                 self._hybrid_leaf(node['right'], x[~mask], y[~mask])
         else:  # nó folha
             try:
-                node['hybrid_model_prediction'] = self._hybrid_model().fit(x, y).predict
+                if len(x) < 50 or len(set(y)) == 1:
+                    # Folha com menos de 100 amostras ou com apenas uma classe
+                    raise ValueError
+                model, options = self.hybrid_model.value
+                node['hybrid_model_prediction'] = model(**options).fit(x, y)
             except ValueError:
                 node['hybrid_model_prediction'] = lambda *args, **kwargs: node['predicted_class']
 
-    def fit(self, x: pd.DataFrame, y: pd.Series, hybrid: bool = False) -> 'DecisionTreeAdapted':
+    def fit(self, x: pd.DataFrame, y: pd.Series) -> 'DecisionTreeAdapted':
         """ Processo de trenamento da árvore de decisão"""
         # total de classes no dataset
         self.num_classes = len(set(y))
@@ -106,7 +135,7 @@ class DecisionTreeAdapted(BaseTree):
         x = x.to_numpy()
         y = y.to_numpy()
         self.tree_ = self._build_tree(x, y, depth=0)
-        if hybrid:  # cria a árvore do modelo híbrido nas folhas
+        if self.hybrid_model != HybridOption.NONE:  # cria a árvore do modelo híbrido nas folhas
             self._hybrid_leaf(self.tree_, x, y)
         return self
 
@@ -117,7 +146,10 @@ class DecisionTreeAdapted(BaseTree):
             feat, threshold = x[node['feature']], node['threshold']
             node = node['left'] if feat <= threshold else node['right']
         if 'hybrid_model_prediction' in node:
-            return node['hybrid_model_prediction'](X=[x])
+            try:
+                return node['hybrid_model_prediction'].predict(X=[x])
+            except AttributeError:  # Nó folha sem modelo híbrido
+                return node['hybrid_model_prediction']()
         return node['predicted_class']
 
     def predict(self, x: pd.DataFrame) -> np.array:
