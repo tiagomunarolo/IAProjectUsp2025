@@ -1,61 +1,97 @@
-import itertools
 import os
-from loguru import logger
+import random
 import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 
-from src.data_processing.data_processing import DataProcessing
-from src.tree import DecisionTreeAdapted
-from src.tree.metrics.metrics import recall, f1_score
-
+# Carrega variáveis do .env
 load_dotenv()
-DATA_PATH = os.getenv("DATA_PATH")
-FOLDS = int(os.getenv("FOLDS", 5))
+DATA_PATH = os.getenv("DATA_PATH", "src/data/UCI_Credit_Card.csv")
+RANDOM_STATE = int(os.getenv("RANDOM_STATE", 42))
 
-# Lista apenas com os nomes (strings) aceitos por criterion.py
+# Importações do projeto
+from src.data_processing.data_processing import DataProcessing
+from src.tree.tree import DecisionTreeAdapted
+from src.metrics.metrics import f1_score
+
+# Critérios disponíveis
 CRITERIA = [
-"gini", "entropy", "f1_gini", "f1_proxy_impurity", "custom_cost_impurity"
- ]
+    'gini',
+    'entropy',
+    'f1_proxy_impurity',
+    'f1_gini',
+    'f1_weighted_gini',
+    'f1_split_impurity',
+]
 
-def get_data():
-    data_proc = DataProcessing(DATA_PATH)
-    data_proc.process_dataset()
-    return data_proc.get_data(FOLDS)
 
-def run():
+def split_data(x: np.ndarray, y: np.ndarray, test_size: float = 0.3, seed: int = 42):
+    np.random.seed(seed)
+    indices = np.arange(len(x))
+    np.random.shuffle(indices)
+    split_point = int(len(x) * (1 - test_size))
+    return x[indices[:split_point]], x[indices[split_point:]], y[indices[:split_point]], y[indices[split_point:]]
+
+
+def objective_function(x_train, x_val, y_train, y_val, max_depth, min_samples_split, criterion):
+    tree = DecisionTreeAdapted(
+        max_depth=max_depth,
+        min_samples_split=min_samples_split,
+        criterion=criterion,
+    )
+    tree.fit(pd.DataFrame(x_train), pd.Series(y_train))
+    y_pred = tree.predict(pd.DataFrame(x_val))
+
+    f1 = f1_score(y_val, y_pred)
+    return f1
+
+
+def run_smbo(x: np.ndarray, y: np.ndarray, n_iter: int = 30, seed: int = 42):
+    random.seed(seed)
     results = []
-    max_depth_opts = [2, 3, 4, 5]
-    min_samples_opts = [2, 5, 10, 20]
 
-    for max_depth, min_samples, criterion_name in itertools.product(max_depth_opts, min_samples_opts, CRITERIA):
-        recalls, f1s = [], []
+    x_train, x_val, y_train, y_val = split_data(x, y, test_size=0.3, seed=seed)
 
-        logger.info(f"Rodando config: depth={max_depth}, min_samples={min_samples}, criterion={criterion_name}")
-        for x_train, x_test, y_train, y_test in get_data():
-            model = DecisionTreeAdapted(
+    for i in range(n_iter):
+        max_depth = random.randint(3, 10)
+        min_samples_split = random.choice([5, 10, 20, 30, 40, 50])
+        criterion = random.choice(CRITERIA)
+
+        try:
+            f1 = objective_function(
+                x_train, x_val, y_train, y_val,
                 max_depth=max_depth,
-                min_samples_split=min_samples,
-                criterion=criterion_name  # <- passa só o nome, conforme esperado em criterion.py
+                min_samples_split=min_samples_split,
+                criterion=criterion,
             )
+        except Exception as e:
+            print(f"[Iter {i+1}] ERRO: {e}")
+            continue
 
-            model.fit(x_train, y_train)
-            y_pred = model.predict(x_test)
-            recalls.append(recall(y_pred, y_test.to_numpy()))
-            f1s.append(f1_score(y_pred, y_test.to_numpy()))
+        config = {
+            'iteration': i,
+            'max_depth': max_depth,
+            'min_samples_split': min_samples_split,
+            'criterion': criterion,
+            'f1_score': f1
+        }
 
-        results.append({
-            "max_depth": max_depth,
-            "min_samples_split": min_samples,
-            "criterion": criterion_name,
-            "recall": np.mean(recalls),
-            "f1": np.mean(f1s)
-        })
+        results.append(config)
+        print(f"[Iter {i+1:02d}/{n_iter}] ✅ F1: {f1:.4f} | Critério: {criterion}")
 
-    df = pd.DataFrame(results)
-    df_sorted = df.sort_values(by="recall", ascending=False)
-    df_sorted.to_csv("smbo_results.csv", index=False)
-    logger.success("SMBO finalizado. Resultados salvos em smbo_results.csv")
+    return pd.DataFrame(results).sort_values(by='f1_score', ascending=False).reset_index(drop=True)
+
 
 if __name__ == "__main__":
-    run()
+    print("Carregando dados...")
+    dp = DataProcessing(DATA_PATH)
+    dp.process_dataset()
+    x, y = dp.x.to_numpy(), dp.y.to_numpy()
+
+    print("Iniciando SMBO (foco: F1 Score)...")
+    df_resultados = run_smbo(x, y, n_iter=30, seed=RANDOM_STATE)
+
+    print("\nTop resultados (por F1 Score):")
+    print(df_resultados.head())
+
+    df_resultados.to_csv("resultados_smbo_f1.csv", index=False)

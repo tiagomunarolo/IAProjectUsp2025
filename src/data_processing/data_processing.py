@@ -1,7 +1,7 @@
 from typing import Generator
 
 import pandas as pd
-from numpy.dtypes import BoolDType
+import numpy as np
 from src.plot import plot_histogram
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.model_selection import KFold
@@ -101,10 +101,11 @@ class DataProcessing:
         df.ESTADO_CIVIL = df.ESTADO_CIVIL.map({1: 'Casado', 2: 'Solteiro', 3: 'Outros'})
         return df
 
+
     @staticmethod
     def normalize_dataset(df: pd.DataFrame) -> pd.DataFrame:
         for col in df.columns:
-            if isinstance(df[col].dtype, BoolDType):
+            if np.issubdtype(df[col].dtype, np.bool_):
                 continue
             df[col] = df[col].astype('float64')
             df.loc[:, col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
